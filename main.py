@@ -21,20 +21,22 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from scipy.interpolate import griddata
 import math
+import pylab
 
 # #############################################################################
-move = 10
-tile = 20
+move = 8
+tile = 16
 track = 20
 num_images = 100
 bleach = np.empty([num_images])
 bound = np.empty([num_images])
 
-tif_path = '/home/gautam/Documents/MATLAB/images/Ratio_tubes/TIFF/tester/YC1_YFP'
+tif_path = '/home/gm/Documents/Work/Images/Ratio_tubes/TIFF/'
 
 for b in range(num_images):
     print('Image: '+str(b+1))
-    im = Image.open(tif_path+'_test'+str(b+1)+'.tif')
+  #  im = Image.open(tif_path+'_test'+str(b+1)+'.tif')
+    im = Image.open(tif_path+'Poster_YC_vid'+str(b+1)+'.tif')
     im2 = np.asarray(im).T
     var = np.empty([3])
 
@@ -43,7 +45,7 @@ for b in range(num_images):
     width = int(siz[0]/move)-1
 
     im_median = np.zeros([width,height])
-
+    print(siz)
     for x in range(0, width, 1):
         for y in range(0, height, 1):
             im_test = np.ravel(im2[x*move:x*move+tile,y*move:y*move+tile])
@@ -80,6 +82,7 @@ for b in range(num_images):
     im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
     XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
 
+    im_left = im_median - XY_interp1D_back
     im3 = np.copy(im2)
     im3.setflags(write=1)
 
@@ -158,7 +161,30 @@ for b in range(num_images):
 
   #  fig1 = plt.figure()
   #  ax = fig1.gca(projection='3d')
-  #  surf1 = ax.plot_surface(X, Y, im_median_mask, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+  #  surf1 = ax.plot_surface(X, Y, im_median, cmap=cm.bwr, linewidth=0, antialiased=False)
+  #  ax.set_xlabel('X',labelpad=15)
+  #  ax.set_ylabel('Y',labelpad=15)
+  #  ax.set_zlabel('Fluorescent Intensity',labelpad=15)
+  #  ax.set_zlim(0, 550)
+  #  ax.grid(False)
+
+  #  fig2 = plt.figure()
+  #  ax = fig2.gca(projection='3d')
+  #  surf1 = ax.plot_surface(X, Y, XY_interp1D_back, cmap=cm.bwr, linewidth=0, antialiased=False)
+  #  ax.set_xlabel('X',labelpad=15)
+  #  ax.set_ylabel('Y',labelpad=15)
+  #  ax.set_zlabel('Fluorescent Intensity',labelpad=15)
+  #  ax.set_zlim(0, 550)
+  #  ax.grid(False)
+
+  #  fig3 = plt.figure()
+  #  ax = fig3.gca(projection='3d')
+  #  surf1 = ax.plot_surface(X, Y, im_left, cmap=cm.bwr, linewidth=0, antialiased=False)
+  #  ax.set_xlabel('X',labelpad=15)
+  #  ax.set_ylabel('Y',labelpad=15)
+  #  ax.set_zlabel('Fluorescent Intensity',labelpad=15)
+  #  ax.set_zlim(0, 550)
+  #  ax.grid(False)
 
   #  fig2 = plt.figure()
   #  ax = fig2.add_subplot(111, projection='3d')
@@ -183,7 +209,7 @@ for b in range(num_images):
   #  xyz2 = varn[~core_samples_mask]
    # ax.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:,2], c='blue')
 
-   # plt.show()
+ #   plt.show()
 
 
     #print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
@@ -201,7 +227,14 @@ for b in range(num_images):
 print('Average intensity of brightest '+str(bleach))
 print('Average intensity of boundary '+str(bound))
 
+#pylab.rc('font', family='serif', size=30)
+
 fig4 = plt.figure()
-plt.plot(np.arange(0,num_images),bound, c='red',marker='o')
-plt.plot(np.arange(0,num_images),bleach, c='blue',marker='o')
+#plt.plot(np.arange(0,num_images),bound, c='red',marker='o')
+ax = plt.gca()
+plt.plot(np.arange(0,num_images),bleach, c='red',marker='o')
+ax.set_xlabel('Time', labelpad=15, fontsize=30)
+ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=30)
+plt.tick_params(axis='both', which='major', labelsize=20)
+ax.grid(False)
 plt.show()
