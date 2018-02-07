@@ -14,7 +14,7 @@ import scipy as sp
 from scipy.interpolate import griddata
 from scipy.optimize import curve_fit
 
-from sklearn.cluster import DBSCAN, import_metrics
+from sklearn.cluster import DBSCAN
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -26,7 +26,11 @@ import pylab
 # Size
 move = 8 # Moving window size
 tile = 16 # Tile size
-numi = 1 # Number of images
+numi = 10 # Number of images
+track = 100  # Number of pixels displaying the highest intensity to track
+
+bleach = np.empty([numi])
+bound = np.empty([numi])
 
 # Path to files
 tif_path = '/home/gm/Documents/Work/Images/Ratio_tubes/TIFF/'
@@ -111,17 +115,14 @@ for b in range(numi):
 #    im5 = cv2.erode(im5, kernel2, iterations=2)
 #    im6 = np.multiply(im3_res,np.divide(im5,255))
 
-    img4 = Image.fromarray(im4.T)
-    img4.show()
+#    img4 = Image.fromarray(im4.T)
+#    img4.show()
 
-    plt.hist(np.ravel(im4),bins='auto')
-    plt.show()
+#    plt.hist(np.ravel(im4),bins='auto')
+#    plt.show()
 
     # BLEACHING SUBTRACTION
     # Bleaching calculation by most intense pixels and boundary pixels
-    bleach = np.empty([numi])
-    bound = np.empty([numi])
-    track = 20 # Number of pixels displaying the highest intensity to track
 
     # Calculate higher moments and median of background subtracted image
     var_front = np.empty([3])
@@ -175,6 +176,8 @@ for b in range(numi):
         im_front_select_mask[rowpos*move:rowpos*move+tile, colpos*move:colpos*move+tile] = 65535
 
 
+print(bleach)
+   # scipy.optimize.curve_fit()
 def func(x, a, b, c):
     return a * np.exp(-b * x) + c
 
