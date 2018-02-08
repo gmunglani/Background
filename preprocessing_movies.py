@@ -23,14 +23,16 @@ import matplotlib.cm as cm
 import os
 import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d as p3
+from scipy.optimize import curve_fit
 
 # #############################################################################
 # Input parameters
 typ = 0 # 0 - YFP, 1 - CFP
 res = 4095 # Resolution in pixels
-numi = 235 # Number of images
+numi = 10 # Number of images
 eps = 0.001 # DBSCAN tolerance [higher epsilon = more background]
-decay = np.arange(0,100) # Range for decay calculation
+fit = 1 # 0 - Linear, 1 - Exponential
+decay = np.arange(5,10) # Range for decay calculation
 
 # Options
 mat_file = True
@@ -38,7 +40,7 @@ decay_plot = True
 analysis_plot = False
 
 # Path to files
-fname = 'YC11'
+fname = 'YC18'
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
 
@@ -171,18 +173,31 @@ for image in im:
         im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
         bleach[count] = np.median(im_corr_pos)
 
+# Exponential fit function
+def func(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
 # Decay fit and correction
 if (decay_plot == True or mat_file == True):
     im_outputf = np.copy(im_output)
     if (decay.shape[0] > 0):
         # Fit decay
-        fitt = np.polyfit(decay, bleach[decay], 1)
-        dval = np.poly1d(fitt)
+        if (fit == 0):
+            fitt = np.polyfit(decay, bleach[decay], 1)
+            dval = np.poly1d(fitt)
+        else:
+            fitt, pcov = curve_fit(func, decay, bleach[decay])
+            expf = func(np.arange(decay[0],numi,1), *fitt)
+            print(expf)
+
         print(fitt)
 
         # Bleached image
-        for a in range(decay[0],decay[1]):
-            im_outputf[:,:,a] = np.multiply(im_output[:,:,a],(dval(decay[0])/dval(a)))
+        for a in range(decay[0],numi):
+            if (fit == 0):
+                im_outputf[:,:,a] = np.multiply(im_output[:,:,a],(dval(decay[0])/dval(a)))
+            else:
+                im_outputf[:, :, a] = np.multiply(im_output[:, :, a], (expf[0] / expf[a]))
 
 # Write mat files
 if (mat_file == True):
@@ -194,7 +209,11 @@ if (decay_plot == True):
     fig1 = plt.figure()
     ax = plt.gca()
     if (decay.shape[0] > 0):
-        plt.plot(np.arange(decay[0],numi,1),dval(np.arange(decay[0], numi, 1)), c='red')
+        if (fit == 0):
+            plt.plot(np.arange(decay[0],numi,1),dval(np.arange(decay[0], numi, 1)), c='red')
+        else:
+            plt.plot(np.arange(decay[0],numi,1),expf, c='red')
+
     plt.plot(np.arange(1,numi),bleach[np.arange(1,numi)], 'bo')
     ax.set_xlabel(val+' Frame', labelpad=15, fontsize=28)
     ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=28)
