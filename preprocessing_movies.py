@@ -12,27 +12,27 @@ print(__doc__)
 import numpy as np
 import scipy as sp
 from scipy.interpolate import griddata
+from scipy.optimize import curve_fit
 import scipy.io as sio
 from sklearn.cluster import DBSCAN
 import cv2
-import matplotlib.pyplot as plt
 import math
 import pylab
 import pims
-import matplotlib.cm as cm
 import os
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d as p3
-from scipy.optimize import curve_fit
 
 # #############################################################################
 # Input parameters
 typ = 0 # 0 - YFP, 1 - CFP
 res = 4095 # Resolution in pixels
-numi = 10 # Number of images
-eps = 0.001 # DBSCAN tolerance [higher epsilon = more background]
+numi = 600 # Number of images
+eps = 0.002 # DBSCAN tolerance [higher epsilon = more background]
 fit = 1 # 0 - Linear, 1 - Exponential
-decay = np.arange(5,10) # Range for decay calculation
+decay = np.arange(0,200) # Range for decay calculation
 
 # Options
 mat_file = True
@@ -186,9 +186,8 @@ if (decay_plot == True or mat_file == True):
             fitt = np.polyfit(decay, bleach[decay], 1)
             dval = np.poly1d(fitt)
         else:
-            fitt, pcov = curve_fit(func, decay, bleach[decay])
+            fitt, pcov = curve_fit(func, decay, bleach[decay], bounds=([bleach[decay[0]]*0.8, 0, -50], [bleach[decay[0]]*1.2, 0.007, 50]))
             expf = func(np.arange(decay[0],numi,1), *fitt)
-            print(expf)
 
         print(fitt)
 
@@ -286,7 +285,7 @@ if (analysis_plot == True):
     line = [line1, line2, line3, line4]
 
     # Set up animation
-    anim = animation.FuncAnimation(fig2, data, fargs=(X,Y,line),frames=numi, interval=1000, blit=False)
+    anim = animation.FuncAnimation(fig2, data, fargs=(X,Y,line),frames=numi, interval=200, blit=False)
 
     pylab.rc('font', family='serif', size=10)
     plt.show()
