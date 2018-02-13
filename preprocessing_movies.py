@@ -9,6 +9,9 @@ from __future__ import print_function, division
 
 print(__doc__)
 
+import matplotlib
+matplotlib.use('TkAgg')
+
 import numpy as np
 import scipy as sp
 from scipy.interpolate import griddata
@@ -17,9 +20,11 @@ import scipy.io as sio
 from sklearn.cluster import DBSCAN
 import cv2
 import math
-import pylab
 import pims
 import os
+
+
+import pylab
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
@@ -29,20 +34,20 @@ import mpl_toolkits.mplot3d.axes3d as p3
 # Input parameters
 typ = 0 # 0 - YFP, 1 - CFP
 res = 4095 # Resolution in pixels
-numi = 600 # Number of images
+numi = 1 # Number of images
 eps = 0.002 # DBSCAN tolerance [higher epsilon = more background]
 fit = 1 # 0 - Linear, 1 - Exponential
-decay = np.arange(0,200) # Range for decay calculation
+decay = np.arange(0,0) # Range for decay calculation
 
 # Options
-mat_file = True
-decay_plot = True
+mat_file = False
+decay_plot = False
 analysis_plot = False
 
 # Path to files
 fname = 'YC18'
-inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
-out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
+inp_path = '/Users/htv/Desktop'
+out_path = '/Users/htv/Desktop'
 
 # Choose between YFP and CFP
 if (typ == 0):
@@ -53,7 +58,7 @@ else:
 # Set up paths
 path = inp_path+'/'+fname+'_'+val+'.tif'
 work_path = out_path+'/'+fname+'/'
-im = pims.open(path)
+im = pims.TiffStack_pil(path)
 
 # Create folder if it does not exist
 if not os.path.exists(work_path):
@@ -66,112 +71,127 @@ n_clustersf = [0] * numi
 labels1Df = [0] * numi
 signalf = [0] * numi
 
-for image in im:
-    # Read in the image and convert to np array
-    for count in range(numi):
-        print('Image: '+str(count+1))
-        im = image[count]
-        im2 = np.asarray(im)
 
-        # Width and height of single frame
-        siz = im2.shape
-        move = int(siz[1]/80)
-        tile = int(move*2)
-        height = int(siz[1]/move) -1
-        width = int(siz[0]/move)-1
+# Read in the image and convert to np array
+for count in range(numi):
+    print('Image: '+str(count+1))
+    im2 = np.asarray(im[count])
 
-        # Initializing arrays
-        if (count == 0):
-            im_output = np.empty([siz[0], siz[1], numi])
-            im_outputf = np.empty([siz[0], siz[1], numi])
-            im_medianf = np.empty([width, height, numi])
-            im_backf = np.empty([width, height, numi])
-            im_unbleachf = np.empty([width, height, numi])
-            varnf = np.empty([width*height, 3, numi])
+    # Width and height of single frame
+    siz = im2.shape
+    move = int(siz[1]/80)
+    tile = int(move*2)
+    height = int(siz[1]/move) -1
+    width = int(siz[0]/move)-1
 
-
-        # BACKGROUND SUBTRACTION
-        # Finds the median and higher moments in each window
-        var = np.empty([3])
-        im_median = np.zeros([width,height])
-        for x in range(0, width, 1):
-            for y in range(0, height, 1):
-                im_test = np.ravel(im2[x*move:x*move+tile,y*move:y*move+tile])
-                var = np.vstack((var,np.hstack((sp.stats.moment(im_test,moment=2,axis=0),sp.stats.moment(im_test,moment=3,axis=0),sp.stats.moment(im_test,moment=4,axis=0)))))
-                im_median[x,y] = np.median(im2[x*move:x*move+tile,y*move:y*move+tile])
-
-        # Normalize higher moments
-        var = np.delete(var,(0),axis=0)
-        varn = np.copy(var)
-        varn[:,0] = (varn[:,0]-np.amin(varn[:,0]))/(np.amax(varn[:,0])-np.amin(varn[:,0]))
-        varn[:,1] = (varn[:,1]-np.amin(varn[:,1]))/(np.amax(varn[:,1])-np.amin(varn[:,1]))
-        varn[:,2] = (varn[:,2]-np.amin(varn[:,2]))/(np.amax(varn[:,2])-np.amin(varn[:,2]))
-
-        # DBSCAN clustering with output label matrix of the classifier
-        db = DBSCAN(eps=eps, min_samples=100).fit(varn)
-        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-        core_samples_mask[db.core_sample_indices_] = True
-        labels1D = db.labels_
-        labels = np.reshape(labels1D,[width,height])
-
-        # Number of clusters in labels, ignoring noise if present.
-        n_clusters_ = len(set(labels1D)) - (1 if -1 in labels1D else 0)
-
-        # Mask by multiplying label matrix with median values (remove areas with no signal)
-        im_median_mask = np.multiply(im_median,(labels+1))
-        im_median_mask1D = np.ravel(im_median_mask)
-
-        # Creates a grid for visualization
-        X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
-        X1D = np.ravel(X)
-        Y1D = np.ravel(Y)
-
-        # Remove positions with signal from grid and then interpolate using the background to estimate the background signal distribution
-        XY1D = np.column_stack((X1D,Y1D))
-        pos_front = np.where(im_median_mask1D==0)[0]
-        XY1D_back = np.delete(XY1D, pos_front, axis=0)
-        im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
-        XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+    # Initializing arrays
+    if (count == 0):
+        im_output = np.empty([siz[0], siz[1], numi])
+        im_outputf = np.empty([siz[0], siz[1], numi])
+        im_medianf = np.empty([width, height, numi])
+        im_backf = np.empty([width, height, numi])
+        im_unbleachf = np.empty([width, height, numi])
+        varnf = np.empty([width*height, 3, numi])
 
 
-        # Signal without background on the window level
-        im_left = im_median - XY_interp1D_back
+    # BACKGROUND SUBTRACTION
+    # Finds the median and higher moments in each window
+    var = np.empty([3])
+    im_median = np.zeros([width,height])
+    for x in range(0, width, 1):
+        for y in range(0, height, 1):
+            im_test = np.ravel(im2[x*move:x*move+tile,y*move:y*move+tile])
+            var = np.vstack((var,np.hstack((sp.stats.moment(im_test,moment=2,axis=0),sp.stats.moment(im_test,moment=3,axis=0),sp.stats.moment(im_test,moment=4,axis=0)))))
+            im_median[x,y] = np.median(im2[x*move:x*move+tile,y*move:y*move+tile])
 
-        # Signal without background on the pixel level
-        im3 = np.copy(im2)
-        im3.setflags(write=1)
-        for x in range(0, width, 1):
-            for y in range(0, height, 1):
-                im3[x*tile:x*tile + tile, y*tile:y*tile + tile] = np.subtract(im3[x*tile:x*tile+tile,y*tile:y*tile+tile],int(XY_interp1D_back[x,y]))
+    # Normalize higher moments
+    var = np.delete(var,(0),axis=0)
+    varn = np.copy(var)
+    varn[:,0] = (varn[:,0]-np.amin(varn[:,0]))/(np.amax(varn[:,0])-np.amin(varn[:,0]))
+    varn[:,1] = (varn[:,1]-np.amin(varn[:,1]))/(np.amax(varn[:,1])-np.amin(varn[:,1]))
+    varn[:,2] = (varn[:,2]-np.amin(varn[:,2]))/(np.amax(varn[:,2])-np.amin(varn[:,2]))
 
-        # Remove negative values (array is circular)
-        high_values_flags = im3 > 65000
-        im3[high_values_flags] = 0
+    # DBSCAN clustering with output label matrix of the classifier
+    db = DBSCAN(eps=eps, min_samples=100).fit(varn)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    labels1D = db.labels_
+    labels = np.reshape(labels1D,[width,height])
 
-        # Updating arrays with properties from a single frame
-        im_medianf[:,:,count] = im_median
-        im_backf[:,:,count] = XY_interp1D_back
-        im_unbleachf[:,:,count] = im_left
-        varnf[:,:,count] = varn
-        maskf[count] = core_samples_mask.tolist()
-        n_clustersf[count] = n_clusters_
-        labels1Df[count] = labels1D
-        signalf[count] = -np.sum(labels)
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(labels1D)) - (1 if -1 in labels1D else 0)
 
-        # Blurring and thresholding to remove noise and get a clean image
-        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
-        im3_res = im3.astype(np.float)*255.0/res
-        im3_res8 = np.array(im3_res.astype(np.uint8))
-        ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
+    # Mask by multiplying label matrix with median values (remove areas with no signal)
+    im_median_mask = np.multiply(im_median,(labels+1))
+    im_median_mask1D = np.ravel(im_median_mask)
 
-        # Unbleached image
-        im5 = np.round(np.divide(im4,255)*im3)
-        im_output[:,:,count] = im5
+    # Creates a grid for visualization
+    X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
+    X1D = np.ravel(X)
+    Y1D = np.ravel(Y)
 
-        # Bleach calculation
-        im5_1D = np.ravel(im5)
-        im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
-        bleach[count] = np.median(im_corr_pos)
+    # Remove positions with signal from grid and then interpolate using the background to estimate the background signal distribution
+    XY1D = np.column_stack((X1D,Y1D))
+    pos_front = np.where(im_median_mask1D==0)[0]
+    XY1D_back = np.delete(XY1D, pos_front, axis=0)
+    im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
+    XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+
+    # Signal without background on the window level
+    im_left = im_median - XY_interp1D_back
+
+    # Signal without background on the pixel level
+    im3 = np.copy(im2)
+    im3.setflags(write=1)
+    for x in range(0, width, 1):
+        for y in range(0, height, 1):
+            im3[x*tile:x*tile + tile, y*tile:y*tile + tile] = np.subtract(im3[x*tile:x*tile+tile,y*tile:y*tile+tile],int(XY_interp1D_back[x,y]))
+
+    # Remove negative values (array is circular)
+    high_values_flags = im3 > 65000
+    im3[high_values_flags] = 0
+
+    print(im3)
+    # Updating arrays with properties from a single frame
+    im_medianf[:,:,count] = im_median
+    im_backf[:,:,count] = XY_interp1D_back
+    im_unbleachf[:,:,count] = im_left
+    varnf[:,:,count] = varn
+    maskf[count] = core_samples_mask.tolist()
+    n_clustersf[count] = n_clusters_
+    labels1Df[count] = labels1D
+    signalf[count] = -np.sum(labels)
+
+    # Blurring and thresholding to remove noise and get a clean image
+    im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
+    im3_res = im3.astype(np.float)*255.0/res
+    im3_res8 = np.array(im3_res.astype(np.uint8))
+    ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
+
+    print(ret*res/255.0)
+    print(np.amax(im3))
+    fig1 = plt.figure()
+    plt.hist(np.ravel(im3),bins=np.arange(0,np.amax(im3),1))
+
+
+
+    # Unbleached image
+    im5 = np.round(np.divide(im4,255)*im3)
+
+    print(np.count_nonzero(im5),np.amax(im5))
+    fig2 = plt.figure()
+
+    dig = np.ravel(im5)
+    print(np.nonzero(dig),np.amin(dig[np.nonzero(dig)]))
+    plt.hist(dig[np.nonzero(dig)],bins=np.arange(0,np.amax(im5),1))
+    plt.show()
+
+    im_output[:,:,count] = im5
+
+    # Bleach calculation
+    im5_1D = np.ravel(im5)
+    im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
+    bleach[count] = np.median(im_corr_pos)
 
 # Exponential fit function
 def func(x, a, b, c):
@@ -200,8 +220,8 @@ if (decay_plot == True or mat_file == True):
 
 # Write mat files
 if (mat_file == True):
-    sio.savemat(work_path+fname+'_'+val+'.mat', mdict={'arr': im_output.astype(int)})
-    sio.savemat(work_path + fname + 'f_' + val + '.mat', mdict={'arr': im_outputf.astype(int)})
+    sio.savemat(work_path+fname+'_'+val+'.mat', do_compression=True, mdict={'arr': im_output.astype(int)})
+    sio.savemat(work_path + fname + 'f_' + val + '.mat', do_compression=True, mdict={'arr': im_outputf.astype(int)})
 
 # Plot decay of signal
 if (decay_plot == True):
@@ -214,11 +234,12 @@ if (decay_plot == True):
             plt.plot(np.arange(decay[0],numi,1),expf, c='red')
 
     plt.plot(np.arange(1,numi),bleach[np.arange(1,numi)], 'bo')
+    plt.show()
+
     ax.set_xlabel(val+' Frame', labelpad=15, fontsize=28)
     ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=28)
     plt.tick_params(axis='both', which='major', labelsize=18)
     ax.grid(False)
-    plt.show()
 
 # Create animation of background subtraction
 if (analysis_plot == True):
@@ -291,9 +312,9 @@ if (analysis_plot == True):
     plt.show()
 
     # Set up formatting for the movie files
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(extra_args=['-r', '25'])
-    anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
+    #Writer = animation.writers['ffmpeg']
+    #writer = Writer(extra_args=['-r', '25'])
+    #anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
 
 
 print("Fin")
