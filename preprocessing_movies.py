@@ -151,6 +151,7 @@ for count in range(numi):
     high_values_flags = im3 > 65000
     im3[high_values_flags] = 0
 
+    print(im3)
     # Updating arrays with properties from a single frame
     im_medianf[:,:,count] = im_median
     im_backf[:,:,count] = XY_interp1D_back
