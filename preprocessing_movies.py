@@ -23,55 +23,52 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
+from skimage.feature import register_translation
 import mpl_toolkits.mplot3d.axes3d as p3
+from preprocessing_functions import analysis, imshowpair
+
 
 # #############################################################################
 # Input parameters
-typ = 0 # 0 - YFP, 1 - CFP
 res = 4095 # Resolution in pixels
-numi = 600 # Number of images
-eps = 0.002 # DBSCAN tolerance [higher epsilon = more background]
-fit = 1 # 0 - Linear, 1 - Exponential
-decay = np.arange(0,200) # Range for decay calculation
+numi = 250 # Number of images
+eps = [0.003, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
+#fit = 1 # 0 - Linear, 1 - Exponential
+#decay = np.arange(0,5) # Range for decay calculation
 
 # Options
 mat_file = True
-decay_plot = True
-analysis_plot = False
+#decay_plot = False
+analysis_plot = True
 
 # Path to files
 fname = 'YC18'
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
-
-# Choose between YFP and CFP
-if (typ == 0):
-    val = 'YFP'
-else:
-    val = 'CFP'
-
-# Set up paths
-path = inp_path+'/'+fname+'_'+val+'.tif'
-work_path = out_path+'/'+fname+'/'
-im = pims.open(path)
+val = ['YFP','CFP']
 
 # Create folder if it does not exist
+work_path = out_path+'/'+fname+'/'
 if not os.path.exists(work_path):
     os.makedirs(work_path)
 
-# Initialize variables
-bleach = np.empty([numi])
-maskf = [0] * numi
-n_clustersf = [0] * numi
-labels1Df = [0] * numi
-signalf = [0] * numi
 
-for image in im:
+for typ in range(len(val)):
+    print(val[typ])
+    path = inp_path + '/' + fname + '_' + val[typ] + '.tif'
+    im = pims.TiffStack_pil(path)
+
+    # Initialize variables
+    bleach = np.empty([numi])
+    maskf = [0] * numi
+    n_clustersf = [0] * numi
+    labels1Df = [0] * numi
+    signalf = [0] * numi
+
     # Read in the image and convert to np array
     for count in range(numi):
         print('Image: '+str(count+1))
-        im = image[count]
-        im2 = np.asarray(im)
+        im2 = np.asarray(im[count])
 
         # Width and height of single frame
         siz = im2.shape
@@ -89,6 +86,10 @@ for image in im:
             im_unbleachf = np.empty([width, height, numi])
             varnf = np.empty([width*height, 3, numi])
 
+            # Creates a grid for visualization
+            X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
+            X1D = np.ravel(X)
+            Y1D = np.ravel(Y)
 
         # BACKGROUND SUBTRACTION
         # Finds the median and higher moments in each window
@@ -108,7 +109,7 @@ for image in im:
         varn[:,2] = (varn[:,2]-np.amin(varn[:,2]))/(np.amax(varn[:,2])-np.amin(varn[:,2]))
 
         # DBSCAN clustering with output label matrix of the classifier
-        db = DBSCAN(eps=eps, min_samples=100).fit(varn)
+        db = DBSCAN(eps=eps[typ], min_samples=100).fit(varn)
         core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
         core_samples_mask[db.core_sample_indices_] = True
         labels1D = db.labels_
@@ -121,18 +122,12 @@ for image in im:
         im_median_mask = np.multiply(im_median,(labels+1))
         im_median_mask1D = np.ravel(im_median_mask)
 
-        # Creates a grid for visualization
-        X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
-        X1D = np.ravel(X)
-        Y1D = np.ravel(Y)
-
         # Remove positions with signal from grid and then interpolate using the background to estimate the background signal distribution
         XY1D = np.column_stack((X1D,Y1D))
         pos_front = np.where(im_median_mask1D==0)[0]
         XY1D_back = np.delete(XY1D, pos_front, axis=0)
         im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
         XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
-
 
         # Signal without background on the window level
         im_left = im_median - XY_interp1D_back
@@ -160,48 +155,56 @@ for image in im:
 
         # Blurring and thresholding to remove noise and get a clean image
         im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
-        im3_res = im3.astype(np.float)*255.0/res
-        im3_res8 = np.array(im3_res.astype(np.uint8))
-        ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
+        im_output[:,:,count] = im3
+
+    #    im3_res = im3.astype(np.float)*255.0/res
+    #    im3_res8 = np.array(im3_res.astype(np.uint8))
+    #    ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
 
         # Unbleached image
-        im5 = np.round(np.divide(im4,255)*im3)
-        im_output[:,:,count] = im5
+    #    im5 = np.round(np.divide(im4,255)*im3)
 
         # Bleach calculation
-        im5_1D = np.ravel(im5)
-        im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
-        bleach[count] = np.median(im_corr_pos)
+    #    im5_1D = np.ravel(im5)
+    #    im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
+    #    bleach[count] = np.median(im_corr_pos)
+
+    if (analysis_plot == True):
+        analysis(val[typ], X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, n_clustersf, labels1Df,
+                     numi)
+
+    if (mat_file == True):
+        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_output.astype(int)})
 
 # Exponential fit function
 def func(x, a, b, c):
     return a * np.exp(-b * x) + c
 
 # Decay fit and correction
-if (decay_plot == True or mat_file == True):
-    im_outputf = np.copy(im_output)
-    if (decay.shape[0] > 0):
-        # Fit decay
-        if (fit == 0):
-            fitt = np.polyfit(decay, bleach[decay], 1)
-            dval = np.poly1d(fitt)
-        else:
-            fitt, pcov = curve_fit(func, decay, bleach[decay], bounds=([bleach[decay[0]]*0.8, 0, -50], [bleach[decay[0]]*1.2, 0.007, 50]))
-            expf = func(np.arange(decay[0],numi,1), *fitt)
+#if (decay_plot == True or mat_file == True):
+#    im_outputf = np.copy(im_output)
+#    if (decay.shape[0] > 0):
+#        # Fit decay
+#        if (fit == 0):
+#            fitt = np.polyfit(decay, bleach[decay], 1)
+#            dval = np.poly1d(fitt)
+#        else:
+#            fitt, pcov = curve_fit(func, decay, bleach[decay], bounds=([bleach[decay[0]]*0.8, 0, -50], [bleach[decay[0]]*1.2, 0.007, 50]))
+#            expf = func(np.arange(decay[0],numi,1), *fitt)
 
-        print(fitt)
+#        print(fitt)
 
         # Bleached image
-        for a in range(decay[0],numi):
-            if (fit == 0):
-                im_outputf[:,:,a] = np.multiply(im_output[:,:,a],(dval(decay[0])/dval(a)))
-            else:
-                im_outputf[:, :, a] = np.multiply(im_output[:, :, a], (expf[0] / expf[a]))
+#        for a in range(decay[0],numi):
+#            if (fit == 0):
+#                im_outputf[:,:,a] = np.multiply(im_output[:,:,a],(dval(decay[0])/dval(a)))
+#            else:
+#                im_outputf[:, :, a] = np.multiply(im_output[:, :, a], (expf[0] / expf[a]))
 
 # Write mat files
-if (mat_file == True):
-    sio.savemat(work_path+fname+'_'+val+'.mat', mdict={'arr': im_output.astype(int)})
-    sio.savemat(work_path + fname + 'f_' + val + '.mat', mdict={'arr': im_outputf.astype(int)})
+#if (mat_file == True):
+#    sio.savemat(work_path+fname+'_'+val+'.mat', mdict={'arr': im_output.astype(int)})
+#    sio.savemat(work_path + fname + 'f_' + val + '.mat', mdict={'arr': im_outputf.astype(int)})
 
 # Plot decay of signal
 if (decay_plot == True):
@@ -219,81 +222,6 @@ if (decay_plot == True):
     plt.tick_params(axis='both', which='major', labelsize=18)
     ax.grid(False)
     plt.show()
-
-# Create animation of background subtraction
-if (analysis_plot == True):
-    # Define variables over each frame
-    def data(i,X,Y,line):
-        ax1.clear()
-        line1 = ax1.plot_surface(X,Y,im_medianf[:,:,i],cmap=cm.bwr, linewidth=0, antialiased=False)
-        ax1.set_title("{} Frame: {}".format(val,i+1))
-        ax1.set_zlim(0, np.amax(im_medianf))
-        ax1.grid(False)
-        ax1.set_xticklabels([])
-        ax1.set_yticklabels([])
-
-        ax2.clear()
-        line2 = ax2.plot_surface(X,Y,im_backf[:,:,i],cmap=cm.bwr, linewidth=0, antialiased=False)
-        ax2.set_title("Number of Clusters: {}".format(n_clustersf[i]))
-        ax2.set_zlim(0, np.amax(im_medianf))
-        ax2.grid(False)
-        ax2.set_xticklabels([])
-        ax2.set_yticklabels([])
-
-        ax3.clear()
-        line3 = ax3.plot_surface(X,Y,im_unbleachf[:,:,i],cmap=cm.bwr, linewidth=0, antialiased=False)
-        ax3.set_title("Number of Tiles: {}".format(labels1Df[i].size))
-        ax3.set_zlim(0, np.amax(im_medianf))
-        ax3.grid(False)
-        ax3.set_xticklabels([])
-        ax3.set_yticklabels([])
-
-        ax4.clear()
-        ax4.set_title("Number of Tiles with Signal: {}".format(signalf[i]))
-        ax4.set_xlim(0, 1)
-        ax4.set_ylim(0, 1)
-        ax4.set_zlim(0, 1)
-        ax4.grid(False)
-        ax4.set_xlabel('Variance',labelpad=10)
-        ax4.set_ylabel('Skewness',labelpad=10)
-        ax4.set_zlabel('Kurtosis',labelpad=10)
-        xyz = varn[maskf[i]]
-        xyz2 = varn[[not i for i in maskf[i]]]
-        line4 = ax4.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:, 2], c='blue')
-        line4 = ax4.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='red', s=80)
-
-        line = [line1, line2, line3, line4]
-        return line,
-
-    # Define figures, axis and initialize
-    fig2 = plt.figure()
-    ax1 = fig2.add_subplot(2,2,1,projection='3d')
-    ax2 = fig2.add_subplot(2,2,2,projection='3d')
-    ax3 = fig2.add_subplot(2,2,3,projection='3d')
-    ax4 = fig2.add_subplot(2,2,4,projection='3d')
-
-    ax1.view_init(elev=15., azim=30.)
-    ax2.view_init(elev=15., azim=30.)
-    ax3.view_init(elev=15., azim=30.)
-    ax4.view_init(elev=30., azim=210.)
-
-    line1 = ax1.plot_surface(X,Y,im_medianf[:,:,0],cmap=cm.bwr)
-    line2 = ax2.plot_surface(X,Y,im_backf[:,:,0],cmap=cm.bwr)
-    line3 = ax3.plot_surface(X,Y,im_unbleachf[:,:,0],cmap=cm.bwr)
-    line4 = ax4.scatter(10, 10, 10, c='red')
-
-    line = [line1, line2, line3, line4]
-
-    # Set up animation
-    anim = animation.FuncAnimation(fig2, data, fargs=(X,Y,line),frames=numi, interval=200, blit=False)
-
-    pylab.rc('font', family='serif', size=10)
-    plt.show()
-
-    # Set up formatting for the movie files
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(extra_args=['-r', '25'])
-    anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
 
 
 print("Fin")
