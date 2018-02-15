@@ -78,9 +78,9 @@ def analysis(val, X,Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf
     plt.show()
 
     # Set up formatting for the movie files
-    #Writer = animation.writers['ffmpeg']
-    #writer = Writer(extra_args=['-r', '25'])
-    #anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(extra_args=['-r', '25'])
+    anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
 
 def imshowpair(im_YFP,im_CFP):
  #   img = cv2.imread('cameraman.tif', 0)
