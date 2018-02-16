@@ -38,8 +38,8 @@ decay = np.arange(0,5) # Range for decay calculation
 
 # Options
 mat_file = True
-decay_plot = False
 analysis_plot = True
+#decay_plot = False
 
 # Path to files
 fname = 'YC18'
@@ -180,8 +180,8 @@ for typ in range(len(val)):
         sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)})
 
 # Exponential fit function
-def func(x, a, b, c):
-    return a * np.exp(-b * x) + c
+#def func(x, a, b, c):
+#    return a * np.exp(-b * x) + c
 
 # Decay fit and correction
 #if (decay_plot == True or mat_file == True):
@@ -210,21 +210,21 @@ def func(x, a, b, c):
 #    sio.savemat(work_path + fname + 'f_' + val + '.mat', mdict={'arr': im_outputf.astype(int)})
 
 # Plot decay of signal
-if (decay_plot == True):
-    fig1 = plt.figure()
-    ax = plt.gca()
-    if (decay.shape[0] > 0):
-        if (fit == 0):
-            plt.plot(np.arange(decay[0],numi,1),dval(np.arange(decay[0], numi, 1)), c='red')
-        else:
-            plt.plot(np.arange(decay[0],numi,1),expf, c='red')
+#if (decay_plot == True):
+#    fig1 = plt.figure()
+#    ax = plt.gca()
+#    if (decay.shape[0] > 0):
+#        if (fit == 0):
+#            plt.plot(np.arange(decay[0],numi,1),dval(np.arange(decay[0], numi, 1)), c='red')
+#        else:
+#            plt.plot(np.arange(decay[0],numi,1),expf, c='red')
 
-    plt.plot(np.arange(1,numi),bleach[np.arange(1,numi)], 'bo')
-    ax.set_xlabel(val+' Frame', labelpad=15, fontsize=28)
-    ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=28)
-    plt.tick_params(axis='both', which='major', labelsize=18)
-    ax.grid(False)
-    plt.show()
+#    plt.plot(np.arange(1,numi),bleach[np.arange(1,numi)], 'bo')
+#    ax.set_xlabel(val+' Frame', labelpad=15, fontsize=28)
+#    ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=28)
+#    plt.tick_params(axis='both', which='major', labelsize=18)
+#    ax.grid(False)
+#    plt.show()
 
 
 print("Fin")
