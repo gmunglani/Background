@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d as p3
 
 # Create animation of background subtraction
-def analysis(val, X,Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, n_clustersf, labels1Df, numi):
+def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df, numi):
     # Define variables over each frame
     def data(i, X, Y, line):
         ax1.clear()
@@ -19,15 +19,16 @@ def analysis(val, X,Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf
         ax1.set_yticklabels([])
 
         ax2.clear()
+        minmax = np.amax(im_backf[:,:,i]) - np.amin(im_backf[:,:,i])
         line2 = ax2.plot_surface(X, Y, im_backf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
-        ax2.set_title("Number of Clusters: {}".format(n_clustersf[i]))
+        ax2.set_title("Min to Max: {}".format(minmax))
         ax2.set_zlim(0, np.amax(im_medianf))
         ax2.grid(False)
         ax2.set_xticklabels([])
         ax2.set_yticklabels([])
 
         ax3.clear()
-        line3 = ax3.plot_surface(X, Y, im_unbleachf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
+        line3 = ax3.plot_surface(X1, Y1, im_unbleachf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
         ax3.set_title("Number of Tiles: {}".format(labels1Df[i].size))
         ax3.set_zlim(0, np.amax(im_medianf))
         ax3.grid(False)
@@ -66,7 +67,7 @@ def analysis(val, X,Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf
 
     line1 = ax1.plot_surface(X,Y,im_medianf[:,:,0],cmap=cm.bwr)
     line2 = ax2.plot_surface(X,Y,im_backf[:,:,0],cmap=cm.bwr)
-    line3 = ax3.plot_surface(X,Y,im_unbleachf[:,:,0],cmap=cm.bwr)
+    line3 = ax3.plot_surface(X1,Y1,im_unbleachf[:,:,0],cmap=cm.bwr)
     line4 = ax4.scatter(10, 10, 10, c='red')
 
     line = [line1, line2, line3, line4]
