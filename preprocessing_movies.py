@@ -33,8 +33,8 @@ from preprocessing_functions import analysis, imshowpair
 res = 4095 # Resolution in pixels
 numi = 10 # Number of images
 eps = [0.001, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
-fit = 1 # 0 - Linear, 1 - Exponential
-decay = np.arange(0,5) # Range for decay calculation
+#fit = 1 # 0 - Linear, 1 - Exponential
+#decay = np.arange(0,5) # Range for decay calculation
 
 # Options
 mat_file = True
@@ -42,9 +42,9 @@ analysis_plot = True
 #decay_plot = False
 
 # Path to files
-fname = 'YC18'
-inp_path = '/Users/htv/Desktop'
-out_path = '/Users/htv/Desktop'
+fname = 'Lily_4'
+inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
+out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
 val = ['YFP','CFP']
 
 # Create folder if it does not exist
