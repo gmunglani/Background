@@ -31,10 +31,10 @@ from preprocessing_functions import analysis, imshowpair
 # #############################################################################
 # Input parameters
 res = 4095 # Resolution in pixels
-numi = 250 # Number of images
-eps = [0.003, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
-#fit = 1 # 0 - Linear, 1 - Exponential
-#decay = np.arange(0,5) # Range for decay calculation
+numi = 10 # Number of images
+eps = [0.001, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
+fit = 1 # 0 - Linear, 1 - Exponential
+decay = np.arange(0,5) # Range for decay calculation
 
 # Options
 mat_file = True
@@ -43,15 +43,14 @@ analysis_plot = True
 
 # Path to files
 fname = 'YC18'
-inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
-out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
+inp_path = '/Users/htv/Desktop'
+out_path = '/Users/htv/Desktop'
 val = ['YFP','CFP']
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
 if not os.path.exists(work_path):
     os.makedirs(work_path)
-
 
 for typ in range(len(val)):
     print(val[typ])
@@ -72,22 +71,20 @@ for typ in range(len(val)):
 
         # Width and height of single frame
         siz = im2.shape
-        move = int(siz[1]/80)
-        tile = int(move*2)
-        height = int(siz[1]/move) -1
-        width = int(siz[0]/move)-1
+        tile = int(siz[1]/40)
+        height = int(siz[1]/tile)
+        width = int(siz[0]/tile)
 
         # Initializing arrays
         if (count == 0):
-            im_output = np.empty([siz[0], siz[1], numi])
-            im_outputf = np.empty([siz[0], siz[1], numi])
             im_medianf = np.empty([width, height, numi])
             im_backf = np.empty([width, height, numi])
-            im_unbleachf = np.empty([width, height, numi])
+            im_unbleachf = np.empty([siz[0], siz[1], numi])
             varnf = np.empty([width*height, 3, numi])
 
             # Creates a grid for visualization
             X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
+            X1, Y1 = np.meshgrid(np.arange(0,siz[1]), np.arange(0,siz[0]))
             X1D = np.ravel(X)
             Y1D = np.ravel(Y)
 
@@ -97,9 +94,9 @@ for typ in range(len(val)):
         im_median = np.zeros([width,height])
         for x in range(0, width, 1):
             for y in range(0, height, 1):
-                im_test = np.ravel(im2[x*move:x*move+tile,y*move:y*move+tile])
+                im_test = np.ravel(im2[x*tile:x*tile+tile,y*tile:y*tile+tile])
                 var = np.vstack((var,np.hstack((sp.stats.moment(im_test,moment=2,axis=0),sp.stats.moment(im_test,moment=3,axis=0),sp.stats.moment(im_test,moment=4,axis=0)))))
-                im_median[x,y] = np.median(im2[x*move:x*move+tile,y*move:y*move+tile])
+                im_median[x,y] = np.median(im2[x*tile:x*tile+tile,y*tile:y*tile+tile])
 
         # Normalize higher moments
         var = np.delete(var,(0),axis=0)
@@ -118,11 +115,11 @@ for typ in range(len(val)):
         # Number of clusters in labels, ignoring noise if present.
         n_clusters_ = len(set(labels1D)) - (1 if -1 in labels1D else 0)
 
-        # Mask by multiplying label matrix with median values (remove areas with no signal)
+        # Mask by multiplying label matrix with median values (retile areas with no signal)
         im_median_mask = np.multiply(im_median,(labels+1))
         im_median_mask1D = np.ravel(im_median_mask)
 
-        # Remove positions with signal from grid and then interpolate using the background to estimate the background signal distribution
+        # Retile positions with signal from grid and then interpolate using the background to estimate the background signal distribution
         XY1D = np.column_stack((X1D,Y1D))
         pos_front = np.where(im_median_mask1D==0)[0]
         XY1D_back = np.delete(XY1D, pos_front, axis=0)
@@ -135,34 +132,40 @@ for typ in range(len(val)):
         # Signal without background on the pixel level
         im3 = np.copy(im2)
         im3.setflags(write=1)
+        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
+        im3 = im3.astype(int)
         for x in range(0, width, 1):
             for y in range(0, height, 1):
                 im3[x*tile:x*tile + tile, y*tile:y*tile + tile] = np.subtract(im3[x*tile:x*tile+tile,y*tile:y*tile+tile],int(XY_interp1D_back[x,y]))
 
-        # Remove negative values (array is circular)
+        # Retile negative values (array is circular)
         high_values_flags = im3 > 65000
         im3[high_values_flags] = 0
+
+        low_values_flags = im3 < 0
+        im3[low_values_flags] = 0
 
         # Updating arrays with properties from a single frame
         im_medianf[:,:,count] = im_median
         im_backf[:,:,count] = XY_interp1D_back
-        im_unbleachf[:,:,count] = im_left
+        im_unbleachf[:,:,count] = im3
         varnf[:,:,count] = varn
         maskf[count] = core_samples_mask.tolist()
         n_clustersf[count] = n_clusters_
         labels1Df[count] = labels1D
         signalf[count] = -np.sum(labels)
 
-        # Blurring and thresholding to remove noise and get a clean image
-        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
-        im_output[:,:,count] = im3
-
-    #    im3_res = im3.astype(np.float)*255.0/res
-    #    im3_res8 = np.array(im3_res.astype(np.uint8))
-    #    ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
+        # Blurring and thresholding to retile noise and get a clean image
+   #     fig = plt.figure()
+   #     im3_res = im3.astype(np.float)*255.0/res
+   #     im3_res8 = np.array(im3_res.astype(np.uint8))
+   #     ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
+   #     im5 = np.round(np.divide(im4,255)*im3)
+   #     ravelo = np.ravel(im5)
+   #     plt.hist(ravelo[np.nonzero(ravelo)], bins=np.arange(-1000,2000,10))
+        #plt.show()
 
         # Unbleached image
-    #    im5 = np.round(np.divide(im4,255)*im3)
 
         # Bleach calculation
     #    im5_1D = np.ravel(im5)
@@ -170,11 +173,11 @@ for typ in range(len(val)):
     #    bleach[count] = np.median(im_corr_pos)
 
     if (analysis_plot == True):
-        analysis(val[typ], X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, n_clustersf, labels1Df,
+        analysis(val[typ], X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df,
                      numi)
 
     if (mat_file == True):
-        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_output.astype(int)})
+        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)})
 
 # Exponential fit function
 #def func(x, a, b, c):
