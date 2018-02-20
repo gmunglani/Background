@@ -177,7 +177,7 @@ for typ in range(len(val)):
                      numi)
 
     if (mat_file == True):
-        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)})
+        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)}, do_compression=True)
 
 # Exponential fit function
 #def func(x, a, b, c):
