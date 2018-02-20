@@ -132,7 +132,6 @@ for typ in range(len(val)):
         # Signal without background on the pixel level
         im3 = np.copy(im2)
         im3.setflags(write=1)
-        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
         im3 = im3.astype(int)
         for x in range(0, width, 1):
             for y in range(0, height, 1):
@@ -144,6 +143,8 @@ for typ in range(len(val)):
 
         low_values_flags = im3 < 0
         im3[low_values_flags] = 0
+
+        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
 
         # Updating arrays with properties from a single frame
         im_medianf[:,:,count] = im_median
