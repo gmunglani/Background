@@ -19,7 +19,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         ax1.set_yticklabels([])
 
         ax2.clear()
-        minmax = np.amax(im_backf[:,:,i]) - np.amin(im_backf[:,:,i])
+        minmax = np.amax(np.ravel(im_backf[:,:,i])) - np.amin(np.ravel(im_backf[:,:,i]))
         line2 = ax2.plot_surface(X, Y, im_backf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
         ax2.set_title("Min to Max: {}".format(minmax))
         ax2.set_zlim(0, np.amax(im_medianf))
@@ -66,7 +66,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     ax4.view_init(elev=30., azim=210.)
 
     line1 = ax1.plot_surface(X,Y,im_medianf[:,:,0],cmap=cm.bwr)
-    line2 = ax2.plot_surface(X,Y,im_backf[:,:,0],cmap=cm.bwr)
+    line2 = ax2.plot_surface(X,Y,np.ones((X.shape[0],X.shape[1])),cmap=cm.bwr)
     line3 = ax3.plot_surface(X1,Y1,im_unbleachf[:,:,0],cmap=cm.bwr)
     line4 = ax4.scatter(10, 10, 10, c='red')
 

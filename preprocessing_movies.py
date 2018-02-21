@@ -11,7 +11,7 @@ print(__doc__)
 
 import numpy as np
 import scipy as sp
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, SmoothBivariateSpline
 from scipy.optimize import curve_fit
 import scipy.io as sio
 from sklearn.cluster import DBSCAN
@@ -20,6 +20,7 @@ import math
 import pylab
 import pims
 import os
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
@@ -31,12 +32,13 @@ from preprocessing_functions import analysis, imshowpair
 # #############################################################################
 # Input parameters
 res = 4095 # Resolution in pixels
-numi = 1 # Number of images
-eps = [0.0008, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
+numi = 10 # Number of images
+eps = [0.0008,0.003]  # DBSCAN tolerance [higher epsilon = more background]
 #fit = 1 # 0 - Linear, 1 - Exponential
 #decay = np.arange(0,5) # Range for decay calculation
 
 # Options
+smooth = True
 mat_file = False
 analysis_plot = True
 #decay_plot = False
@@ -45,7 +47,7 @@ analysis_plot = True
 fname = 'Lily_4'
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
-val = ['YFP']
+val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
@@ -125,7 +127,16 @@ for typ in range(len(val)):
         pos_front = np.where(im_median_mask1D==0)[0]
         XY1D_back = np.delete(XY1D, pos_front, axis=0)
         im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
-        XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+
+        try:
+            XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+        except:
+            print("eps value too low")
+            sys.exit(0)
+
+        if (smooth == True):
+            XY_interp1D_back = cv2.GaussianBlur(XY_interp1D_back,
+                                   (int(math.ceil(9 * siz[1] / 1280)), int(math.ceil(9 * siz[1] / 1280))), 0)
 
         # Signal without background on the window level
         im_left = im_median - XY_interp1D_back
@@ -133,7 +144,6 @@ for typ in range(len(val)):
         # Signal without background on the pixel level
         im3 = np.copy(im2)
         im3.setflags(write=1)
-        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
         im3 = im3.astype(int)
         for x in range(0, width, 1):
             for y in range(0, height, 1):
