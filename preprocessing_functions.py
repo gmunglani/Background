@@ -43,12 +43,12 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         ax4.grid(False)
         ax4.set_xlabel('Variance', labelpad=10)
         ax4.set_ylabel('Skewness', labelpad=10)
-        ax4.set_zlabel('Kurtosis', labelpad=10)
+        ax4.set_zlabel('Median', labelpad=10)
         varn = varnf[:,:,i]
         xyz = varn[maskf[i]]
         xyz2 = varn[[not i for i in maskf[i]]]
-        line4 = ax4.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:, 2], c='blue')
-        line4 = ax4.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='red', s=80)
+        line4 = ax4.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:, 3], c='blue')
+        line4 = ax4.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 3], c='red', s=80)
 
         line = [line1, line2, line3, line4]
         return line,
