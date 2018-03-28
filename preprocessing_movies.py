@@ -11,7 +11,7 @@ print(__doc__)
 
 import numpy as np
 import scipy as sp
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, SmoothBivariateSpline
 from scipy.optimize import curve_fit
 import scipy.io as sio
 from sklearn.cluster import DBSCAN
@@ -20,6 +20,7 @@ import math
 import pylab
 import pims
 import os
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
@@ -32,20 +33,21 @@ from preprocessing_functions import analysis, imshowpair
 # Input parameters
 res = 4095 # Resolution in pixels
 numi = 10 # Number of images
-eps = [0.001, 0.001]  # DBSCAN tolerance [higher epsilon = more background]
-fit = 1 # 0 - Linear, 1 - Exponential
-decay = np.arange(0,5) # Range for decay calculation
+eps = [0.0008,0.003]  # DBSCAN tolerance [higher epsilon = more background]
+#fit = 1 # 0 - Linear, 1 - Exponential
+#decay = np.arange(0,5) # Range for decay calculation
 
 # Options
-mat_file = True
+smooth = True
+mat_file = False
 analysis_plot = True
 #decay_plot = False
 
 # Path to files
-fname = 'YC18'
-inp_path = '/Users/htv/Desktop'
-out_path = '/Users/htv/Desktop'
-val = ['YFP','CFP']
+fname = 'Lily_4'
+inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
+out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
+val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
@@ -71,7 +73,7 @@ for typ in range(len(val)):
 
         # Width and height of single frame
         siz = im2.shape
-        tile = int(siz[1]/40)
+        tile = int(siz[1]/80)
         height = int(siz[1]/tile)
         width = int(siz[0]/tile)
 
@@ -80,7 +82,7 @@ for typ in range(len(val)):
             im_medianf = np.empty([width, height, numi])
             im_backf = np.empty([width, height, numi])
             im_unbleachf = np.empty([siz[0], siz[1], numi])
-            varnf = np.empty([width*height, 3, numi])
+            varnf = np.empty([width*height, 4, numi])
 
             # Creates a grid for visualization
             X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
@@ -90,12 +92,12 @@ for typ in range(len(val)):
 
         # BACKGROUND SUBTRACTION
         # Finds the median and higher moments in each window
-        var = np.empty([3])
+        var = np.empty([4])
         im_median = np.zeros([width,height])
         for x in range(0, width, 1):
             for y in range(0, height, 1):
                 im_test = np.ravel(im2[x*tile:x*tile+tile,y*tile:y*tile+tile])
-                var = np.vstack((var,np.hstack((sp.stats.moment(im_test,moment=2,axis=0),sp.stats.moment(im_test,moment=3,axis=0),sp.stats.moment(im_test,moment=4,axis=0)))))
+                var = np.vstack((var,np.hstack((sp.stats.moment(im_test,moment=2,axis=0),sp.stats.moment(im_test,moment=3,axis=0),sp.stats.moment(im_test,moment=4,axis=0),np.median(np.ravel(im_test))))))
                 im_median[x,y] = np.median(im2[x*tile:x*tile+tile,y*tile:y*tile+tile])
 
         # Normalize higher moments
@@ -104,6 +106,7 @@ for typ in range(len(val)):
         varn[:,0] = (varn[:,0]-np.amin(varn[:,0]))/(np.amax(varn[:,0])-np.amin(varn[:,0]))
         varn[:,1] = (varn[:,1]-np.amin(varn[:,1]))/(np.amax(varn[:,1])-np.amin(varn[:,1]))
         varn[:,2] = (varn[:,2]-np.amin(varn[:,2]))/(np.amax(varn[:,2])-np.amin(varn[:,2]))
+        varn[:,3] = (varn[:,3]-np.amin(varn[:,3]))/(np.amax(varn[:,3])-np.amin(varn[:,3]))
 
         # DBSCAN clustering with output label matrix of the classifier
         db = DBSCAN(eps=eps[typ], min_samples=100).fit(varn)
@@ -124,7 +127,16 @@ for typ in range(len(val)):
         pos_front = np.where(im_median_mask1D==0)[0]
         XY1D_back = np.delete(XY1D, pos_front, axis=0)
         im_median_mask1D_back = np.delete(im_median_mask1D, pos_front, axis=0)
-        XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+
+        try:
+            XY_interp1D_back = griddata(XY1D_back, im_median_mask1D_back, (X, Y), method='nearest')
+        except:
+            print("eps value too low")
+            sys.exit(0)
+
+        if (smooth == True):
+            XY_interp1D_back = cv2.GaussianBlur(XY_interp1D_back,
+                                   (int(math.ceil(9 * siz[1] / 1280)), int(math.ceil(9 * siz[1] / 1280))), 0)
 
         # Signal without background on the window level
         im_left = im_median - XY_interp1D_back
@@ -132,7 +144,6 @@ for typ in range(len(val)):
         # Signal without background on the pixel level
         im3 = np.copy(im2)
         im3.setflags(write=1)
-        im3 = cv2.GaussianBlur(im3,(int(math.ceil(9*siz[1]/1280)),int(math.ceil(9*siz[1]/1280))),0)
         im3 = im3.astype(int)
         for x in range(0, width, 1):
             for y in range(0, height, 1):
@@ -177,7 +188,7 @@ for typ in range(len(val)):
                      numi)
 
     if (mat_file == True):
-        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)})
+        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)}, do_compression=True)
 
 # Exponential fit function
 #def func(x, a, b, c):

@@ -19,7 +19,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         ax1.set_yticklabels([])
 
         ax2.clear()
-        minmax = np.amax(im_backf[:,:,i]) - np.amin(im_backf[:,:,i])
+        minmax = np.amax(np.ravel(im_backf[:,:,i])) - np.amin(np.ravel(im_backf[:,:,i]))
         line2 = ax2.plot_surface(X, Y, im_backf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
         ax2.set_title("Min to Max: {}".format(minmax))
         ax2.set_zlim(0, np.amax(im_medianf))
@@ -43,12 +43,12 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         ax4.grid(False)
         ax4.set_xlabel('Variance', labelpad=10)
         ax4.set_ylabel('Skewness', labelpad=10)
-        ax4.set_zlabel('Kurtosis', labelpad=10)
+        ax4.set_zlabel('Median', labelpad=10)
         varn = varnf[:,:,i]
         xyz = varn[maskf[i]]
         xyz2 = varn[[not i for i in maskf[i]]]
-        line4 = ax4.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:, 2], c='blue')
-        line4 = ax4.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='red', s=80)
+        line4 = ax4.scatter(xyz2[:, 0], xyz2[:, 1], xyz2[:, 3], c='blue')
+        line4 = ax4.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 3], c='red', s=80)
 
         line = [line1, line2, line3, line4]
         return line,
@@ -66,7 +66,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     ax4.view_init(elev=30., azim=210.)
 
     line1 = ax1.plot_surface(X,Y,im_medianf[:,:,0],cmap=cm.bwr)
-    line2 = ax2.plot_surface(X,Y,im_backf[:,:,0],cmap=cm.bwr)
+    line2 = ax2.plot_surface(X,Y,np.ones((X.shape[0],X.shape[1])),cmap=cm.bwr)
     line3 = ax3.plot_surface(X1,Y1,im_unbleachf[:,:,0],cmap=cm.bwr)
     line4 = ax4.scatter(10, 10, 10, c='red')
 
@@ -79,9 +79,9 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     plt.show()
 
     # Set up formatting for the movie files
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(extra_args=['-r', '25'])
-    anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
+    #Writer = animation.writers['ffmpeg']
+    #writer = Writer(extra_args=['-r', '25'])
+    #anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
 
 def imshowpair(im_YFP,im_CFP):
  #   img = cv2.imread('cameraman.tif', 0)
