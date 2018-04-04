@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d as p3
 
 # Create animation of background subtraction
-def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df, numi):
+def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df, numi, work_path, fname):
     # Define variables over each frame
     def data(i, X, Y, line):
         ax1.clear()
@@ -54,11 +54,11 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         return line,
 
     # Define figures, axis and initialize
-    fig2 = plt.figure()
-    ax1 = fig2.add_subplot(2,2,1,projection='3d')
-    ax2 = fig2.add_subplot(2,2,2,projection='3d')
-    ax3 = fig2.add_subplot(2,2,3,projection='3d')
-    ax4 = fig2.add_subplot(2,2,4,projection='3d')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2,2,1,projection='3d')
+    ax2 = fig.add_subplot(2,2,2,projection='3d')
+    ax3 = fig.add_subplot(2,2,3,projection='3d')
+    ax4 = fig.add_subplot(2,2,4,projection='3d')
 
     ax1.view_init(elev=15., azim=30.)
     ax2.view_init(elev=15., azim=30.)
@@ -73,57 +73,12 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     line = [line1, line2, line3, line4]
 
     # Set up animation
-    anim = animation.FuncAnimation(fig2, data, fargs=(X,Y,line),frames=numi, interval=200, blit=False)
+    anim = animation.FuncAnimation(fig, data, fargs=(X,Y,line),frames=numi, interval=200, blit=False, repeat_delay=1000)
 
     pylab.rc('font', family='serif', size=10)
     plt.show()
 
     # Set up formatting for the movie files
-    #Writer = animation.writers['ffmpeg']
-    #writer = Writer(extra_args=['-r', '25'])
-    #anim.save(work_path + fname + '_' + val + '.avi', writer=writer)
-
-def imshowpair(im_YFP,im_CFP):
- #   img = cv2.imread('cameraman.tif', 0)
-    img = im_YFP
-    img2 = im_CFP
-    rows, cols = img.shape
-
- #   print img
-
-
-#    fig0 = plt.figure()
-#    plt.imshow(img)
-
- #   M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 2, 1)
- #   img2 = cv2.warpAffine(img, M, (cols, rows))
-#    fig1 = plt.figure()
-#    plt.imshow(img2)
-
-    diff = ((img.astype(np.int16) - img2.astype(np.int16)) / 2 + 128).astype(np.uint8)
-
-#    fig2 = plt.figure()
-#    plt.imshow(diff)
-
-    im_color = cv2.applyColorMap(diff, cv2.COLORMAP_JET)
-
-#    fig3 = plt.figure()
-#    plt.imshow(im_color)
-
-    lut = np.zeros((256, 1, 3), dtype="uint8")
-    for i in xrange(256):
-        lut[i, 0, 0] = max(min((127 - i) * 2, 255), 0) if i < 127 else 0
-        lut[i, 0, 1] = max(min((i - 127) * 2, 255), 0) if i > 127 else 0
-        lut[i, 0, 2] = max(min((127 - i) * 2, 255), 0) if i < 127 else 0
-
-    im_falsecolor_r = cv2.LUT(diff, lut[:, 0, 0])
-    im_falsecolor_g = cv2.LUT(diff, lut[:, 0, 1])
-    im_falsecolor_b = cv2.LUT(diff, lut[:, 0, 2])
-    im_falsecolor = np.dstack((im_falsecolor_r, im_falsecolor_g, im_falsecolor_b))
-
-    fig4 = plt.figure()
-    plt.imshow(im_falsecolor)
-    plt.show()
-
-  #  cv2.waitKey(0)
-  #  cv2.destroyAllWindows()
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(extra_args=['-r', '25'])
+    anim.save(work_path + fname + '_' + val + '_analysis' + '.avi', writer=writer)

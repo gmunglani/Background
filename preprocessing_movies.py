@@ -22,29 +22,24 @@ import pims
 import os
 import sys
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.animation as animation
-from skimage.feature import register_translation
-import mpl_toolkits.mplot3d.axes3d as p3
-from preprocessing_functions import analysis, imshowpair
+from preprocessing_functions import analysis
 
 
 # #############################################################################
 # Input parameters
 res = 4095 # Resolution in pixels
-numi = 10 # Number of images
-eps = [0.0008,0.003]  # DBSCAN tolerance [higher epsilon = more background]
-#fit = 1 # 0 - Linear, 1 - Exponential
-#decay = np.arange(0,5) # Range for decay calculation
+start = 1 # Start number of frames
+numi = 2 # End number of frames
+eps = [0.0038,0.01]  # DBSCAN tolerance [higher epsilon = more background]
 
 # Options
-smooth = True
-mat_file = False
-analysis_plot = True
-#decay_plot = False
+smooth = True # Bilateral smoothing
+mat_file = False # Create MATLAB .mat file
+analysis_plot = True # Create animation of background subtraction
 
 # Path to files
-fname = 'Lily_4'
+fname = 'YC18'
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
 val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
@@ -60,14 +55,15 @@ for typ in range(len(val)):
     im = pims.TiffStack_pil(path)
 
     # Initialize variables
-    bleach = np.empty([numi])
-    maskf = [0] * numi
-    n_clustersf = [0] * numi
-    labels1Df = [0] * numi
-    signalf = [0] * numi
+    bleach = np.empty([numi-start])
+    maskf = [0] * (numi-start)
+    n_clustersf = [0] * (numi-start)
+    labels1Df = [0] * (numi-start)
+    signalf = [0] * (numi-start)
+    ims = []
 
     # Read in the image and convert to np array
-    for count in range(numi):
+    for count in range(start,numi):
         print('Image: '+str(count+1))
         im2 = np.asarray(im[count])
 
@@ -78,11 +74,11 @@ for typ in range(len(val)):
         width = int(siz[0]/tile)
 
         # Initializing arrays
-        if (count == 0):
-            im_medianf = np.empty([width, height, numi])
-            im_backf = np.empty([width, height, numi])
-            im_unbleachf = np.empty([siz[0], siz[1], numi])
-            varnf = np.empty([width*height, 4, numi])
+        if (count == start):
+            im_medianf = np.empty([width, height, (numi-start)])
+            im_backf = np.empty([width, height, (numi-start)])
+            im_unbleachf = np.empty([siz[0], siz[1], (numi-start)])
+            varnf = np.empty([width*height, 4, (numi-start)])
 
             # Creates a grid for visualization
             X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
@@ -134,13 +130,6 @@ for typ in range(len(val)):
             print("eps value too low")
             sys.exit(0)
 
-        if (smooth == True):
-            XY_interp1D_back = cv2.GaussianBlur(XY_interp1D_back,
-                                   (int(math.ceil(9 * siz[1] / 1280)), int(math.ceil(9 * siz[1] / 1280))), 0)
-
-        # Signal without background on the window level
-        im_left = im_median - XY_interp1D_back
-
         # Signal without background on the pixel level
         im3 = np.copy(im2)
         im3.setflags(write=1)
@@ -149,94 +138,36 @@ for typ in range(len(val)):
             for y in range(0, height, 1):
                 im3[x*tile:x*tile + tile, y*tile:y*tile + tile] = np.subtract(im3[x*tile:x*tile+tile,y*tile:y*tile+tile],int(XY_interp1D_back[x,y]))
 
-        # Retile negative values (array is circular)
+        # Re-tile negative values (array is circular)
         high_values_flags = im3 > 65000
         im3[high_values_flags] = 0
 
         low_values_flags = im3 < 0
         im3[low_values_flags] = 0
 
+        if (smooth == True):
+            im3 = np.float32(im3)
+            im3 = cv2.bilateralFilter(im3,int(math.ceil(9 * siz[1] / 1280)),30,30)
+        #    im3 = cv2.GaussianBlur(im3,(int(math.ceil(9 * siz[1] / 1280)), int(math.ceil(9 * siz[1] / 1280))), 0)
+            im3 = np.uint16(im3)
+
         # Updating arrays with properties from a single frame
-        im_medianf[:,:,count] = im_median
-        im_backf[:,:,count] = XY_interp1D_back
-        im_unbleachf[:,:,count] = im3
-        varnf[:,:,count] = varn
-        maskf[count] = core_samples_mask.tolist()
-        n_clustersf[count] = n_clusters_
-        labels1Df[count] = labels1D
-        signalf[count] = -np.sum(labels)
+        im_medianf[:,:,count-start] = im_median
+        im_backf[:,:,count-start] = XY_interp1D_back
+        im_unbleachf[:,:,count-start] = im3
+        varnf[:,:,count-start] = varn
+        maskf[count-start] = core_samples_mask.tolist()
+        n_clustersf[count-start] = n_clusters_
+        labels1Df[count-start] = labels1D
+        signalf[count-start] = -np.sum(labels)
 
-        # Blurring and thresholding to retile noise and get a clean image
-   #     fig = plt.figure()
-   #     im3_res = im3.astype(np.float)*255.0/res
-   #     im3_res8 = np.array(im3_res.astype(np.uint8))
-   #     ret, im4 = cv2.threshold(im3_res8, 0, 255, cv2.THRESH_OTSU)
-   #     im5 = np.round(np.divide(im4,255)*im3)
-   #     ravelo = np.ravel(im5)
-   #     plt.hist(ravelo[np.nonzero(ravelo)], bins=np.arange(-1000,2000,10))
-        #plt.show()
-
-        # Unbleached image
-
-        # Bleach calculation
-    #    im5_1D = np.ravel(im5)
-    #    im_corr_pos = im5_1D[np.nonzero(np.ravel(im5_1D))]
-    #    bleach[count] = np.median(im_corr_pos)
 
     if (analysis_plot == True):
         analysis(val[typ], X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df,
-                     numi)
+                 (numi - start), work_path, fname)
 
     if (mat_file == True):
-        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf.astype(int)}, do_compression=True)
-
-# Exponential fit function
-#def func(x, a, b, c):
-#    return a * np.exp(-b * x) + c
-
-# Decay fit and correction
-#if (decay_plot == True or mat_file == True):
-#    im_outputf = np.copy(im_output)
-#    if (decay.shape[0] > 0):
-#        # Fit decay
-#        if (fit == 0):
-#            fitt = np.polyfit(decay, bleach[decay], 1)
-#            dval = np.poly1d(fitt)
-#        else:
-#            fitt, pcov = curve_fit(func, decay, bleach[decay], bounds=([bleach[decay[0]]*0.8, 0, -50], [bleach[decay[0]]*1.2, 0.007, 50]))
-#            expf = func(np.arange(decay[0],numi,1), *fitt)
-
-#        print(fitt)
-
-        # Bleached image
-#        for a in range(decay[0],numi):
-#            if (fit == 0):
-#                im_outputf[:,:,a] = np.multiply(im_output[:,:,a],(dval(decay[0])/dval(a)))
-#            else:
-#                im_outputf[:, :, a] = np.multiply(im_output[:, :, a], (expf[0] / expf[a]))
-
-# Write mat files
-#if (mat_file == True):
-#    sio.savemat(work_path+fname+'_'+val+'.mat', mdict={'arr': im_output.astype(int)})
-#    sio.savemat(work_path + fname + 'f_' + val + '.mat', mdict={'arr': im_outputf.astype(int)})
-
-# Plot decay of signal
-#if (decay_plot == True):
-#    fig1 = plt.figure()
-#    ax = plt.gca()
-#    if (decay.shape[0] > 0):
-#        if (fit == 0):
-#            plt.plot(np.arange(decay[0],numi,1),dval(np.arange(decay[0], numi, 1)), c='red')
-#        else:
-#            plt.plot(np.arange(decay[0],numi,1),expf, c='red')
-
-#    plt.plot(np.arange(1,numi),bleach[np.arange(1,numi)], 'bo')
-#    ax.set_xlabel(val+' Frame', labelpad=15, fontsize=28)
-#    ax.set_ylabel('Fluorescent Intensity', labelpad=15, fontsize=28)
-#    plt.tick_params(axis='both', which='major', labelsize=18)
-#    ax.grid(False)
-#    plt.show()
-
+        sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf}, do_compression=True)
 
 print("Fin")
 
