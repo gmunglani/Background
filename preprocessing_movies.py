@@ -24,25 +24,29 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from preprocessing_functions import analysis
-
+import h5py
+import datetime
 
 # #############################################################################
 # Input parameters
 res = 4095 # Resolution in pixels
-start = 1 # Start number of frames
-numi = 2 # End number of frames
+start = 0 # Start number of frames
+numi = 830 # End number of frames
 eps = [0.0038,0.01]  # DBSCAN tolerance [higher epsilon = more background]
+
+special = [495] # Specific frames that need their own eps
 
 # Options
 smooth = True # Bilateral smoothing
 mat_file = False # Create MATLAB .mat file
 analysis_plot = True # Create animation of background subtraction
+h5_file = True # Create h5 file
 
 # Path to files
 fname = 'YC18'
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes'
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results'
-val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
+val = ['CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
@@ -54,18 +58,24 @@ for typ in range(len(val)):
     path = inp_path + '/' + fname + '_' + val[typ] + '.tif'
     im = pims.TiffStack_pil(path)
 
+    if special:
+        start = 0
+        numi = len(special)
+
     # Initialize variables
-    bleach = np.empty([numi-start])
     maskf = [0] * (numi-start)
     n_clustersf = [0] * (numi-start)
     labels1Df = [0] * (numi-start)
     signalf = [0] * (numi-start)
-    ims = []
 
     # Read in the image and convert to np array
     for count in range(start,numi):
-        print('Image: '+str(count+1))
-        im2 = np.asarray(im[count])
+        if special:
+            print('Image: ' + str(special[count]))
+            im2 = np.asarray(im[special[count]-1])
+        else:
+            print('Image: ' + str(count + 1))
+            im2 = np.asarray(im[count])
 
         # Width and height of single frame
         siz = im2.shape
@@ -75,10 +85,10 @@ for typ in range(len(val)):
 
         # Initializing arrays
         if (count == start):
-            im_medianf = np.empty([width, height, (numi-start)])
-            im_backf = np.empty([width, height, (numi-start)])
-            im_unbleachf = np.empty([siz[0], siz[1], (numi-start)])
-            varnf = np.empty([width*height, 4, (numi-start)])
+            im_medianf = np.empty([width, height, (numi-start)],dtype=np.float16)
+            im_backf = np.empty([width, height, (numi-start)],dtype=np.float16)
+            im_unbleachf = np.empty([(numi-start), siz[0], siz[1]],dtype=np.uint16)
+            varnf = np.empty([width*height, 4, (numi-start)],dtype=np.float16)
 
             # Creates a grid for visualization
             X, Y = np.meshgrid(np.arange(0,height), np.arange(0,width))
@@ -154,7 +164,7 @@ for typ in range(len(val)):
         # Updating arrays with properties from a single frame
         im_medianf[:,:,count-start] = im_median
         im_backf[:,:,count-start] = XY_interp1D_back
-        im_unbleachf[:,:,count-start] = im3
+        im_unbleachf[count-start,:,:] = im3
         varnf[:,:,count-start] = varn
         maskf[count-start] = core_samples_mask.tolist()
         n_clustersf[count-start] = n_clusters_
@@ -168,6 +178,18 @@ for typ in range(len(val)):
 
     if (mat_file == True):
         sio.savemat(work_path + fname + '_' + val[typ] + '.mat', mdict={'arr': im_unbleachf}, do_compression=True)
+
+    if (h5_file == True):
+        if special:
+            path = work_path + fname + '_' + val[typ] + '.h5'
+            f = h5py.File(path, 'a')
+            orig = f['values']
+            for j in range(start,numi):
+                orig[special[j]-1] = im_unbleachf[j]
+        else:
+            with h5py.File(work_path + fname + '_' + val[typ] + ".h5", 'w') as f:
+                dst = f.create_dataset("values", data=im_unbleachf, shape=((numi - start), siz[0], siz[1]), dtype=np.uint16,
+                                   compression='gzip')
 
 print("Fin")
 

@@ -28,7 +28,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
         ax2.set_yticklabels([])
 
         ax3.clear()
-        line3 = ax3.plot_surface(X1, Y1, im_unbleachf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
+        line3 = ax3.plot_surface(X1, Y1, im_unbleachf[i, :, :], cmap=cm.bwr, linewidth=0, antialiased=False)
         ax3.set_title("Number of Tiles: {}".format(labels1Df[i].size))
         ax3.set_zlim(0, np.amax(im_medianf))
         ax3.grid(False)
@@ -67,7 +67,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
 
     line1 = ax1.plot_surface(X,Y,im_medianf[:,:,0],cmap=cm.bwr)
     line2 = ax2.plot_surface(X,Y,np.ones((X.shape[0],X.shape[1])),cmap=cm.bwr)
-    line3 = ax3.plot_surface(X1,Y1,im_unbleachf[:,:,0],cmap=cm.bwr)
+    line3 = ax3.plot_surface(X1,Y1,im_unbleachf[0,:,:],cmap=cm.bwr)
     line4 = ax4.scatter(10, 10, 10, c='red')
 
     line = [line1, line2, line3, line4]
