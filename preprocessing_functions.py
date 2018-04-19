@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import pylab
+import logging
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
@@ -8,7 +9,7 @@ import mpl_toolkits.mplot3d.axes3d as p3
 
 # Create animation of background subtraction
 def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df, numi, work_path, fname):
-    # Define variables over each frame
+    """This functions plots the background analysis animation"""
     def data(i, X, Y, line):
         ax1.clear()
         line1 = ax1.plot_surface(X, Y, im_medianf[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
@@ -73,7 +74,7 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     line = [line1, line2, line3, line4]
 
     # Set up animation
-    anim = animation.FuncAnimation(fig, data, fargs=(X,Y,line),frames=numi, interval=200, blit=False, repeat_delay=1000)
+    anim = animation.FuncAnimation(fig, data, fargs=(X,Y,line),frames=numi, interval=20, blit=False, repeat_delay=1000)
 
     pylab.rc('font', family='serif', size=10)
     plt.show()
@@ -81,4 +82,15 @@ def analysis(val, X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf
     # Set up formatting for the movie files
     Writer = animation.writers['ffmpeg']
     writer = Writer(extra_args=['-r', '25'])
-    anim.save(work_path + fname + '_' + val + '_analysis' + '.avi', writer=writer)
+   # anim.save(work_path + fname + '_' + val + '_back' + '.avi', writer=writer)
+
+def logit(name):
+    """ Logging input values """
+    logger = logging.getLogger('back')
+    hdlr = logging.FileHandler(name)
+    formatter = logging.Formatter('%(asctime)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+    logger.setLevel(20)
+
+    return logger
