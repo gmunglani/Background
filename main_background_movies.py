@@ -17,7 +17,7 @@ import cv2
 import math
 import pims
 import os
-from preprocessing_functions import analysis, logit
+from main_functions import analysis, logit
 import h5py
 import logging
 
