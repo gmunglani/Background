@@ -17,7 +17,7 @@ import cv2
 import math
 import pims
 import os
-from main_functions import analysis, logit
+from functions import analysis, logit
 import h5py
 import logging
 
@@ -26,8 +26,8 @@ import logging
 res = 4095 # Resolution in pixels
 start = 1 # Start number of frames
 stop = 215 # End number of frames
-eps = [0.006]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
-specific = [190,212] # Specific frames that need their own eps
+eps = [0.002, 0.006]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
+specific = [] # Specific frames that need their own eps
 
 # Options
 analysis_plot = True # Create animation of background subtraction
@@ -37,7 +37,7 @@ h5_file = True # Create h5 file
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes' # Path with the input Tiff files
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results' # Output path for further processing
 fname = 'YC11' # Sample name
-val = ['CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
+val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
