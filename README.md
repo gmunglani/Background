@@ -1,6 +1,6 @@
 # Background
 
-Background subtraction using DBSCAn.
+Background subtraction using DBSCAN.
 
 Run main_background_movies.py with the lowest possible DBSCAN eps values for the YFP and CFP stacks. 
 
