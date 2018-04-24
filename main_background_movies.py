@@ -19,25 +19,24 @@ import pims
 import os
 from functions import analysis, logit
 import h5py
-import logging
 
 # #############################################################################
 # Input parameters
 res = 4095 # Resolution in pixels
 start = 1 # Start number of frames
-stop = 215 # End number of frames
-eps = [0.002, 0.006]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
+stop = 860 # End number of frames
+eps = [0.002]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
 specific = [] # Specific frames that need their own eps
 
 # Options
 analysis_plot = True # Create animation of background subtraction
-h5_file = True # Create h5 file
+h5_file = False # Create h5 file
 
 # Path to files
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes' # Path with the input Tiff files
 out_path = '/home/gm/Documents/Scripts/MATLAB/Tip_results' # Output path for further processing
-fname = 'YC11' # Sample name
-val = ['YFP','CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
+fname = 'YC18' # Sample name
+val = ['CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
 work_path = out_path+'/'+fname+'/'
@@ -68,10 +67,10 @@ for typ in range(len(val)):
     # Read in the image and convert to np array
     for count in range(start,stop):
         if specific:
-            print('Image: ' + str(specific[count]))
+            print('Image: ' + str(specific[count+1]))
             im2 = np.asarray(im[specific[count]])
         else:
-            print('Image: ' + str(count))
+            print('Image: ' + str(count+1))
             im2 = np.asarray(im[count])
 
         # Width and height of single frame
