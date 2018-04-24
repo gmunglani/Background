@@ -22,7 +22,7 @@ import h5py
 
 # #############################################################################
 # Input parameters
-res = 4095 # Resolution in pixels
+res = 4095 # pixel depth
 start = 1 # Start number of frames
 stop = 860 # End number of frames
 eps = [0.002]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
@@ -67,7 +67,7 @@ for typ in range(len(val)):
     # Read in the image and convert to np array
     for count in range(start,stop):
         if specific:
-            print('Image: ' + str(specific[count+1]))
+            print('Image: ' + str(specific[count]+1))
             im2 = np.asarray(im[specific[count]])
         else:
             print('Image: ' + str(count+1))
