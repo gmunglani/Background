@@ -49,6 +49,56 @@ start = start - 1
 # Setup logging
 logger = logit(work_path + fname + '_back.log')
 
+class stack(object):
+    def __init__(self,im,val):
+        siz1,siz2 = im.frame_shape
+        window = 40 if eps[typ] > 0.01 else 80
+        self.height = window
+        self.width = int(siz1*window/siz2)
+
+        path = inp_path + '/' + fname + '_' + val[typ] + '.tif'
+        self.im_stack = pims.TiffStack_pil(path)
+
+        X, Y = np.meshgrid(np.arange(height), np.arange(width))
+        X1, Y1 = np.meshgrid(np.arange(siz[1]), np.arange(siz[0]))
+        self.X1D = np.ravel(X)
+        self.Y1D = np.ravel(Y)
+
+    def specific_frames(self,specific):
+        self.start = 0
+        self.stop = len(specific)
+
+class frame(stack):
+    def __init__(self,count):
+        im_frame = np.asarray(stack.im_stack[count])
+
+    def properties(self):
+        tile_prop = np.empty([self.width*self.height,4])
+        im_tile = np.reshape(im_frame,self.width,self.height*self.window)
+        im_tile_split = np.split(im_tile,self.height)
+
+        for i in (tile_prop.shape[0]):
+            tile_prop[i,0] = sp.stats.moment(im_tile_split[i],moment=2,axis=0)
+            tile_prop[i,1] = sp.stats.moment(im_tile_split[i],moment=3,axis=0)
+            tile_prop[i,2] = sp.stats.moment(im_tile_split[i],moment=4,axis=0)
+            tile_prop[i,3] = np.median(im_tile_split[i])
+
+        im_median = np.copy(tile_prop[:,3])
+
+        tile_min = np.amin(tile_prop,axis=0)
+        tile_ptp = np.ptp(tile_prop,axis=0)
+
+        for j in (tile_prop.shape[1]):
+            tile_prop = map(lambda x : (x - tile_min[j])/tile_ptp[j], tile_prop[j])
+
+        self.tile_prop = tile_prop
+
+    def clustering(self):
+        db = DBSCAN(eps=eps[typ], min_samples=int(height*1.25)).fit(self.tile_prop)
+        labels = db.labels_
+        im_median_mask = np.multiply(im_median,(labels+1))
+
+
 for typ in range(len(val)):
     print(val[typ])
     if specific:
@@ -171,7 +221,7 @@ for typ in range(len(val)):
     else:
         logger.info(val[typ] + '_eps: ' + str(eps[typ]) + ', frames: ' + str(start+1) + '-' + str(stop) + ', save: ' + str(h5_file))
 
-    if (h5_file == True):
+    if (h5_file):
         path = work_path + fname + '_back.h5'
         f = h5py.File(path, 'a')
         if specific:
@@ -184,7 +234,7 @@ for typ in range(len(val)):
                 del f[k]
             dst = f.create_dataset(val[typ], data=im_unbleachf, shape=((stop - start), siz[0], siz[1]), dtype=np.uint16, compression='gzip')
 
-    if (analysis_plot == True):
+    if (analysis_plot):
         analysis(val[typ], X1, Y1, X, Y, im_medianf, im_backf, im_unbleachf, varnf, maskf, signalf, labels1Df,
                  (stop - start), work_path, fname)
 print("Fin")
