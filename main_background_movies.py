@@ -117,8 +117,9 @@ class frame(stack):
         try:
             XY_interp_back = griddata(XY_back, im_median_mask_back, (self.X, self.Y), method='nearest')
         except:
-            XY_interp_back = np.zeros()
+            XY_interp_back = np.zeros([self.width,self.height])
             logger.error(val + '_eps: ' + str(eps) + ', frame: ' + str(count+1) + " (eps value too low)")
+
 
 for typ in range(len(val)):
     print(val[typ])
