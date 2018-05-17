@@ -22,7 +22,6 @@ import h5py
 
 # #############################################################################
 # Input parameters
-res = 4095 # pixel depth
 start = 1 # Start number of frames
 stop = 860 # End number of frames
 eps = [0.002]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
@@ -39,43 +38,43 @@ fname = 'YC18' # Sample name
 val = ['CFP'] # ENSURE THAT THE SIZE OF EPS AND VAL ARE THE SAME
 
 # Create folder if it does not exist
-work_path = out_path+'/'+fname+'/'
-if not os.path.exists(work_path):
-    os.makedirs(work_path)
-
-# Index at 0 instead if 1
-start = start - 1
+work_inp_path = inp_path + '/' + fname
+work_out_path = out_path+'/'+fname+'/'
+if not os.path.exists(work_out_path):
+    os.makedirs(work_out_path)
 
 # Setup logging
-logger = logit(work_path + fname + '_back.log')
+logger = logit(work_out_path + fname + '_back.log')
 
 class stack(object):
-    def __init__(self,im,val):
-        siz1,siz2 = im.frame_shape
-        window = 40 if eps[typ] > 0.01 else 80
+    def __init__(self,path,start=0,stop,val,eps):
+        im_path =  path + '_' + val[0] + '.tif'
+        self.im_stack = pims.TiffStack_pil(im_path)
+
+        siz1,siz2 = self.im_stack.frame_shape
+        window = 40 if eps > 0.01 else 80
+        self.tile_dim = siz2/window
         self.height = window
-        self.width = int(siz1*window/siz2)
+        self.width = int(siz1/self.tile_dim)
 
-        path = inp_path + '/' + fname + '_' + val[typ] + '.tif'
-        self.im_stack = pims.TiffStack_pil(path)
+        X, Y = np.meshgrid(np.arange(self.height), np.arange(self.width))
+        X1, Y1 = np.meshgrid(np.arange(siz2), np.arange(siz1))
+        XY = np.column_stack((np.ravel(X),np.ravel(Y)))
 
-        X, Y = np.meshgrid(np.arange(height), np.arange(width))
-        X1, Y1 = np.meshgrid(np.arange(siz[1]), np.arange(siz[0]))
-        self.X1D = np.ravel(X)
-        self.Y1D = np.ravel(Y)
+        # Index at 0 instead if 1
+        self.range = np.arange(start-1,stop)
 
-    def specific_frames(self,specific):
-        self.start = 0
-        self.stop = len(specific)
+    def specific(self,specific):
+        self.range = specific
 
 class frame(stack):
     def __init__(self,count):
-        im_frame = np.asarray(stack.im_stack[count])
+        self.im_frame = np.asarray(self.im_stack[count])
 
     def properties(self):
         tile_prop = np.empty([self.width*self.height,4])
-        im_tile = np.reshape(im_frame,self.width,self.height*self.window)
-        im_tile_split = np.split(im_tile,self.height)
+        im_tile = np.reshape(self.im_frame,(self.width*self.height/self.tile_dim,self.tile_dim))
+        im_tile_split = np.split(im_tile,(self.tile_dim,self.tile_dim))
 
         for i in (tile_prop.shape[0]):
             tile_prop[i,0] = sp.stats.moment(im_tile_split[i],moment=2,axis=0)
@@ -83,7 +82,7 @@ class frame(stack):
             tile_prop[i,2] = sp.stats.moment(im_tile_split[i],moment=4,axis=0)
             tile_prop[i,3] = np.median(im_tile_split[i])
 
-        im_median = np.copy(tile_prop[:,3])
+        self.im_median = np.copy(tile_prop[:,3])
 
         tile_min = np.amin(tile_prop,axis=0)
         tile_ptp = np.ptp(tile_prop,axis=0)
@@ -93,11 +92,22 @@ class frame(stack):
 
         self.tile_prop = tile_prop
 
-    def clustering(self):
-        db = DBSCAN(eps=eps[typ], min_samples=int(height*1.25)).fit(self.tile_prop)
-        labels = db.labels_
-        im_median_mask = np.multiply(im_median,(labels+1))
+    def clustering(self,eps):
+        db = DBSCAN(eps=eps, min_samples=int(self.height*1.25)).fit(self.tile_prop)
+        self.labels = db.labels_
 
+    def subtraction(self):
+        im_median_mask = np.multiply(self.im_median,(self.labels+1))
+        pos_front = np.where(im_median_mask==0)[0]
+        XY_back = np.delete(XY, pos_front, axis=0)
+        im_median_mask_back = np.delete(im_median_mask, pos_front, axis=0)
+
+        try:
+            XY_interp_back = griddata(XY_back, im_median_mask_back, (X, Y), method='nearest')
+        except:
+            XY_interp_back = np.zeros()
+            logger.error(val[typ] + '_eps: ' + str(eps[typ]) + ', frame: ' + str(count+1) + " (eps value to/o low)")
+            raise ValueError('eps value is too low')
 
 for typ in range(len(val)):
     print(val[typ])
