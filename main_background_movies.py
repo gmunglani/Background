@@ -44,7 +44,7 @@ if not os.path.exists(work_out_path):
     os.makedirs(work_out_path)
 
 # Setup logging
-logger = logit(work_out_path + fname + '_back.log')
+logger = stack.logit(work_out_path + fname + '_back.log')
 
 class stack(object):
     def __init__(self,path,start=0,stop,val,eps):
@@ -57,9 +57,9 @@ class stack(object):
         self.height = window
         self.width = int(siz1/self.tile_dim)
 
-        X, Y = np.meshgrid(np.arange(self.height), np.arange(self.width))
+        self.X, self.Y = np.meshgrid(np.arange(self.height), np.arange(self.width))
         X1, Y1 = np.meshgrid(np.arange(siz2), np.arange(siz1))
-        XY = np.column_stack((np.ravel(X),np.ravel(Y)))
+        self.XY = np.column_stack((np.ravel(X),np.ravel(Y)))
 
         # Index at 0 instead if 1
         self.range = np.arange(start-1,stop)
@@ -67,8 +67,20 @@ class stack(object):
     def specific(self,specific):
         self.range = specific
 
+    def logit(self,name):
+        """ Logging input values """
+        logger = logging.getLogger('back')
+        hdlr = logging.FileHandler(name)
+        formatter = logging.Formatter('%(asctime)s %(message)s')
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
+        logger.setLevel(20)
+
+        return logger
+
 class frame(stack):
     def __init__(self,count):
+        print('Image: ' + str(count + 1))
         self.im_frame = np.asarray(self.im_stack[count])
 
     def properties(self):
@@ -96,18 +108,17 @@ class frame(stack):
         db = DBSCAN(eps=eps, min_samples=int(self.height*1.25)).fit(self.tile_prop)
         self.labels = db.labels_
 
-    def subtraction(self):
+    def subtraction(self,val,count):
         im_median_mask = np.multiply(self.im_median,(self.labels+1))
         pos_front = np.where(im_median_mask==0)[0]
-        XY_back = np.delete(XY, pos_front, axis=0)
+        XY_back = np.delete(self.XY, pos_front, axis=0)
         im_median_mask_back = np.delete(im_median_mask, pos_front, axis=0)
 
         try:
-            XY_interp_back = griddata(XY_back, im_median_mask_back, (X, Y), method='nearest')
+            XY_interp_back = griddata(XY_back, im_median_mask_back, (self.X, self.Y), method='nearest')
         except:
             XY_interp_back = np.zeros()
-            logger.error(val[typ] + '_eps: ' + str(eps[typ]) + ', frame: ' + str(count+1) + " (eps value to/o low)")
-            raise ValueError('eps value is too low')
+            logger.error(val + '_eps: ' + str(eps) + ', frame: ' + str(count+1) + " (eps value too low)")
 
 for typ in range(len(val)):
     print(val[typ])
