@@ -27,10 +27,10 @@ from timeit import default_timer as timer
 start = 1 # Start number of frames
 stop = 10 # End number of frames
 specific = [] # Specific frames that need their own eps
-eps = [0.002]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
+eps = [0.00002]  # DBSCAN tolerance [higher epsilon = more background] - As low as possible
 
 # Options
-analysis = 2 # 1 - Create animation of background subtraction, 2 - Create h5 file, 3 - Create both
+analysis = 1 # 1 - Create animation of background subtraction, 2 - Create h5 file, 3 - Create both
 
 # Path to files
 inp_path = '/home/gm/Documents/Work/Images/Ratio_tubes' # Path with the input Tiff files
@@ -138,21 +138,22 @@ class stack(frame):
 
         try:
             self.ind.XY_interp_back = np.int16(griddata(XY_back, im_median_mask_back, (self.X, self.Y), method='nearest'))
+            im_frame_split = np.empty((np.int32(self.siz1 * self.siz2 / self.dim), self.dim), dtype=np.int16)
+            for i, j in enumerate(self.ind.XY_interp_back.flat):
+                im_frame_split[i * self.dim:(i + 1) * self.dim, 0:self.dim] = np.subtract(self.ind.im_tile_split[i], j)
+
+            self.ind.im_frame = np.reshape(im_frame_split, (self.siz1, self.siz2))
+
+            low_values_flags = self.ind.im_frame < 0
+            self.ind.im_frame[low_values_flags] = 0
+
+            self.ind.im_frame = np.float32(self.ind.im_frame)
+
         except:
-            self.ind.XY_interp_back = np.zeros((self.width,self.height))
-            self.logger.error("".join(self.val,'_eps: ',str(self.eps),', frame: ',str(ind.count+1)," (eps value too low)"))
+            self.ind.XY_interp_back = np.zeros((self.width,self.height),dtype=np.float32)
+            self.logger.error("".join((self.val,'_eps: ',str(self.eps),', frame: ',str(self.ind.count+1)," (eps value too low)")))
+            self.ind.im_frame = np.zeros((self.siz1,self.siz2),dtype=np.float32)
 
-
-        im_frame_split = np.empty((np.int32(self.siz1*self.siz2/self.dim),self.dim),dtype=np.int16)
-        for i,j in enumerate(self.ind.XY_interp_back.flat):
-            im_frame_split[i*self.dim:(i+1)*self.dim,0:self.dim] = np.subtract(self.ind.im_tile_split[i],j)
-
-        self.ind.im_frame = np.reshape(im_frame_split,(self.siz1,self.siz2))
-
-        low_values_flags = self.ind.im_frame < 0
-        self.ind.im_frame[low_values_flags] = 0
-
-        self.ind.im_frame = np.float32(self.ind.im_frame)
 
     def filter(self):
         filtered = cv2.bilateralFilter(self.ind.im_frame, np.int16(math.ceil(9 * self.siz2 / 1280)), 30, 30)
@@ -194,7 +195,6 @@ class stack(frame):
             X1, Y1 = np.int16(np.meshgrid(np.arange(self.siz2), np.arange(self.siz1)))
             analysis_plot(X1, Y1, self, work_out_path)
 
-startt = timer()
 for a,b in zip(val,eps):
     if (specific):
         all = stack(work_inp_path,a,b,specific)
@@ -218,9 +218,6 @@ for a,b in zip(val,eps):
 
     if (analysis != 2):
         all.plot(work_out_path)
-
-endt = timer()
-print(startt-endt)
 
 
 

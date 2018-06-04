@@ -27,7 +27,7 @@ def analysis_plot(X1, Y1, stack, work_out_path):
         ax2.set_yticklabels([])
 
         ax3.clear()
-        line3 = ax3.plot_surface(X1, Y1, stack.im_framef[:, :, i], cmap=cm.bwr, linewidth=0, antialiased=False)
+        line3 = ax3.plot_surface(X1, Y1, stack.im_framef[i, :, :], cmap=cm.bwr, linewidth=0, antialiased=False)
         ax3.set_title("Number of Tiles: {}".format(stack.labelsf[:,i].size))
         ax3.set_zlim(0, np.amax(stack.im_medianf))
         ax3.grid(False)
@@ -35,7 +35,9 @@ def analysis_plot(X1, Y1, stack, work_out_path):
         ax3.set_yticklabels([])
 
         ax4.clear()
-        ax4.set_title("Number of Tiles with Signal: {}".format(-np.sum(stack.labelsf[:,i])))
+        signal = stack.labelsf[:,i]
+        signal[signal > 0] = 0
+        ax4.set_title("Number of Tiles with Signal: {}".format(-np.sum(signal)))
         ax4.set_xlim(0, 1)
         ax4.set_ylim(0, 1)
         ax4.set_zlim(0, 1)
@@ -65,8 +67,8 @@ def analysis_plot(X1, Y1, stack, work_out_path):
     ax4.view_init(elev=30., azim=210.)
 
     line1 = ax1.plot_surface(stack.X,stack.Y,stack.im_medianf[:,:,0],cmap=cm.bwr)
-    line2 = ax2.plot_surface(stack.X,stack.Y,np.ones((stack.width,stack.height)),cmap=cm.bwr)
-    line3 = ax3.plot_surface(X1,Y1,stack.im_framef[:,:,0],cmap=cm.bwr)
+    line2 = ax2.plot_surface(stack.X,stack.Y,stack.im_backf[:,:,0],cmap=cm.bwr)
+    line3 = ax3.plot_surface(X1,Y1,stack.im_framef[0,:,:],cmap=cm.bwr)
     line4 = ax4.scatter(10, 10, 10, c='red')
 
     line = [line1, line2, line3, line4]
